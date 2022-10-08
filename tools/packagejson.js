@@ -1,7 +1,7 @@
 /* eslint-disable */
-const fs = require("fs")
-const Path = require("path")
-const fileName = "../package.json"
+const fs = require('fs')
+const Path = require('path')
+const fileName = '../package.json'
 const file = require(fileName)
 /* eslint-enable */
 
@@ -20,6 +20,6 @@ fs.writeFile(
     if (err) {
       return console.log(err)
     }
-    console.log("Writing to " + fileName)
+    console.log('Writing to ' + fileName)
   }
 )
