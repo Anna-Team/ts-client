@@ -1,6 +1,14 @@
 import { decodeTyson } from './decode'
 import { encodeTyson } from './encode'
-import { AnnaClientConstruct, AnnaDbUri, Decode, Query, Result } from './types'
+import {
+  AnnaClientConstruct,
+  AnnaDbUri,
+  Decode,
+  InsertType,
+  Query,
+  Result,
+  ScalarVectorMap,
+} from './types'
 import zmq from 'zeromq'
 
 class AnnaClient {
@@ -14,9 +22,12 @@ class AnnaClient {
   }
 
   public connect = () => {
-    // from url get host
-    const host = new URL(this.uri).hostname
-    this.socket = zmq.socket('req').connect(`tcp://${host}:${this.port}`)
+    if (this.socket !== undefined) {
+      console.warn(`AnnaClient: socket already connected`)
+    } else {
+      const host = new URL(this.uri).hostname
+      this.socket = zmq.socket('req').connect(`tcp://${host}:${this.port}`)
+    }
   }
 
   public close = () => {
@@ -26,8 +37,8 @@ class AnnaClient {
     this.socket?.close()
   }
 
-  public queryTySON = async (TySON: string) => {
-    this.connect()
+  public queryTySON = async (TySON: string, autoClose = true) => {
+    if (this.socket === undefined) this.connect()
     // decode Tyson to check for errors in string
     try {
       this.decode(TySON)
@@ -38,12 +49,12 @@ class AnnaClient {
     if (this.socket === undefined) {
       throw new Error('No socket open')
     }
-    this.socket?.send(TySON)
+    this.socket.send(TySON)
     const res = await new Promise<string>((res, rej) => {
       let data: string | undefined
       this.socket?.once('message', (raw: Buffer) => {
         data = raw.toString()
-        this.socket?.close()
+        if (autoClose) this.socket?.close()
         res(data as string)
       })
       this.socket?.on('error', (err) => {
@@ -54,12 +65,17 @@ class AnnaClient {
     return res
   }
 
-  public query = async (query: Query) => {
+  public query = async <
+    I extends InsertType = InsertType,
+    R extends ScalarVectorMap = ScalarVectorMap
+  >(
+    query: Query<I>
+  ) => {
     const TySON = encodeTyson(query)
     const res = await this.queryTySON(TySON)
     let decoded = this.decode(res)
     if (!Array.isArray(decoded)) decoded = [decoded]
-    return decoded as Result[]
+    return decoded as Result<R>[]
   }
 
   public decode: Decode = (tyson) => {
