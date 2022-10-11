@@ -385,6 +385,12 @@ test.each(tests.map((t, i) => [t.name, t]))('%s', (name, t) => {
   }
 })
 
+test('Decode UTS Error', () => {
+  expect(() => client.decode('uts|1/1/1970 00:00|')).toThrowError(
+    'Unable to parse TySON. Expected Collection or Result, but found: uts|1/1/1970 00:00|'
+  )
+})
+
 afterAll(async () => {
   // try {
   //   client.close()
